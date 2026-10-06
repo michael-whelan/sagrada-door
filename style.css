@@ -76,14 +76,15 @@ main{max-width:1100px;margin:0 auto;padding:0 10px 20px}
 .prayer.pending{color:var(--muted);font-style:italic;font-size:1.05rem}
 #close{display:none}
 #jump{display:block;margin:6px 2px 0;padding:6px 14px;border-radius:20px;border:1px solid var(--bronze);background:none;color:var(--gold);font-size:.9rem}
-footer{max-width:760px;margin:0 auto;padding:0 14px 30px;color:var(--muted);font-size:.78rem}
+footer{max-width:760px;margin:0 auto;padding:0 14px 30px;color:var(--muted);font-size:.78rem;text-align:center}
 footer p{margin:0 0 .6em}
 footer a{color:var(--gold);text-decoration:none;border-bottom:1px solid var(--bronze)}
 footer a:hover{color:var(--ink);border-bottom-color:var(--gold)}
-.made{color:var(--muted)}
-.links a+a{margin-left:16px}
+/* the dedication is the one warm line down here, so it gets the serif and the full ink colour */
+.made{margin:1.5em 0 .5em;font-family:var(--serif);font-size:1.05rem;color:var(--ink);letter-spacing:.01em}
+.links a+a{margin-left:18px}
 /* page language: three plain words, the current one lit like the door's highlight */
-.langs{display:flex;gap:14px;margin:0 0 12px;padding-top:14px;border-top:1px solid var(--line)}
+.langs{display:flex;justify-content:center;gap:14px;margin:0 0 12px;padding-top:14px;border-top:1px solid var(--line)}
 .langs button{padding:0 0 2px;border:0;border-bottom:1px solid transparent;background:none;
               color:var(--muted);font:inherit;font-size:.8rem;cursor:pointer}
 .langs button:hover{color:var(--ink)}
