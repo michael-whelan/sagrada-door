@@ -3,6 +3,7 @@
 No build, no dependencies. Open `index.html` (or serve the folder with any static server).
 
 - `data.js`  – the 50 languages: highlight boxes (% of the photo) and prayer texts. Edit this to fix things.
+- `i18n.js`  – everything the interface says, in English, Spanish and Catalan.
 - `app.js`   – search, highlight, overlay (desktop) / text below (mobile).
 - `index.html?edit` – pick a language, drag on the door to redraw its box (shift-drag adds one); copy the JSON into data.js.
 
@@ -20,3 +21,11 @@ to the soft box (`#lit.boxed`); serve the folder to get the stroke glow.
 
 Boxes come from `data.js` and can be redrawn with `?edit` — a box taller than its line will light
 the neighbouring lines too. `HOLE_FILL` in `app.js` controls how much dim is lifted around the line.
+
+## Page language
+English, Spanish and Catalan, switched from the footer. A stored choice wins; otherwise the browser
+decides, so a Catalan or Spanish visitor lands in their own language. All the strings live in
+`i18n.js`, including the 50 language names and the per-entry notes, keyed by the same ids `data.js`
+uses — so adding a language to `data.js` never means editing it in three places. The list re-sorts
+alphabetically on each switch, and a language stays searchable under every name the page knows for
+it. The prayers are never translated: they are what is carved on the door.

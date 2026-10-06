@@ -1,5 +1,5 @@
 (function () {
-  var LANGS = window.LANGS.slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
+  var LANGS = window.LANGS.slice();
   var $ = function (id) { return document.getElementById(id); };
   var q = $("q"), list = $("list"), clearBtn = $("clear"), status = $("status"), jump = $("jump");
   var door = $("door"), stage = door.querySelector(".stage"), holes = $("holes"), rings = $("rings"), hl = $("hl"), lit = $("lit");
@@ -9,23 +9,46 @@
   var desktop = window.matchMedia("(min-width:900px) and (hover:hover)");
   var current = null, active = -1, shown = [], timer = null, EDIT = location.search.indexOf("edit") > -1;
 
+  /* ---------- page language ----------
+     Three locales, all of them in i18n.js. The door's own content stays in data.js: the English
+     name is the key the translations hang off, and the prayers are never translated at all.
+     A stored choice wins; otherwise the browser decides, since most visitors here are local. */
+  var LOCALES = ["en", "es", "ca"], STORE = "sagrada-page-lang";
+  var langs = $("langs");
+  var locale = (function () {
+    try {
+      var saved = localStorage.getItem(STORE);
+      if (LOCALES.indexOf(saved) > -1) return saved;
+    } catch (e) {}                                   // private mode: fall through to the browser
+    var nav = (navigator.language || "en").toLowerCase();
+    return nav.indexOf("ca") === 0 ? "ca" : nav.indexOf("es") === 0 ? "es" : "en";
+  })();
+
+  function t(k) { return window.UI[locale][k] || window.UI.en[k]; }
+  function nameOf(l) { var n = window.UI[locale].names; return (n && n[l.id]) || l.name; }
+  function noteOf(l) { var n = window.UI[locale].notes; return (n && n[l.id]) || l.note; }
+  /* a language is searchable under every name the page knows for it, not just the one on screen */
+  function haystack(l) {
+    return [l.name, l.native, window.UI.es.names[l.id], window.UI.ca.names[l.id]].join(" ");
+  }
+
   /* ---------- dropdown ---------- */
   function norm(s) { return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
 
   function renderList(filter) {
     var f = norm(filter || "");
-    shown = LANGS.filter(function (l) { return !f || norm(l.name + " " + l.native).indexOf(f) > -1; });
+    shown = LANGS.filter(function (l) { return !f || norm(haystack(l)).indexOf(f) > -1; });
     list.innerHTML = "";
     if (!shown.length) {
-      var li = document.createElement("li"); li.className = "empty"; li.textContent = "No language found";
+      var li = document.createElement("li"); li.className = "empty"; li.textContent = t("empty");
       list.appendChild(li);
     }
     shown.forEach(function (l, i) {
       var li = document.createElement("li");
       li.id = "opt-" + l.id; li.setAttribute("role", "option");
       li.innerHTML = "<span></span><small></small>";
-      li.firstChild.textContent = l.name;
-      li.lastChild.textContent = l.native === l.name ? "" : l.native;
+      li.firstChild.textContent = nameOf(l);
+      li.lastChild.textContent = l.native === nameOf(l) ? "" : l.native;
       li.addEventListener("mousedown", function (e) { e.preventDefault(); select(l); });
       li.addEventListener("touchend", function (e) { e.preventDefault(); select(l); });
       list.appendChild(li);
@@ -49,7 +72,7 @@
   function closeList() { list.hidden = true; q.setAttribute("aria-expanded", "false"); }
 
   /* Starting a new search resets the cycle: overlay fades out, highlight stays until a new pick */
-  function beginSearch() { hidePanel(); openList(q.value === (current && current.name) ? "" : q.value); }
+  function beginSearch() { hidePanel(); openList(q.value === (current && nameOf(current)) ? "" : q.value); }
 
   q.addEventListener("focus", function () { q.select(); beginSearch(); });
   q.addEventListener("click", function () { if (list.hidden) beginSearch(); });
@@ -251,20 +274,20 @@
   }
 
   function fillPanel(lang) {
-    $("p-name").textContent = lang.name;
+    $("p-name").textContent = nameOf(lang);
     var nat = $("p-native");
-    nat.textContent = lang.native === lang.name ? "" : lang.native;
+    nat.textContent = lang.native === nameOf(lang) ? "" : lang.native;
     nat.setAttribute("lang", lang.id);
     var notes = [];
-    if (!lang.boxes.length) notes.push("Not located on the photo yet.");
-    if (lang.note) notes.push(lang.note);
-    if (lang.verify && lang.text) notes.push("Text to check against a trusted source.");
+    if (!lang.boxes.length) notes.push(t("notLocated"));
+    if (lang.note) notes.push(noteOf(lang));
+    if (lang.verify && lang.text) notes.push(t("verify"));
     $("p-note").textContent = notes.join(" ");
     var t = $("p-text");
     t.className = "prayer" + (lang.dir === "rtl" ? " rtl" : "") + (lang.text ? "" : " pending");
     t.setAttribute("lang", lang.id);
     t.innerHTML = "";
-    lines(lang.text || "The full text for this language hasn't been added yet.").forEach(function (s, i) {
+    lines(lang.text || t("pending")).forEach(function (s, i) {
       var ln = document.createElement("span");
       ln.className = "ln"; ln.style.setProperty("--i", i); ln.textContent = s;
       t.appendChild(ln);
@@ -332,12 +355,12 @@
 
   /* ---------- selecting ---------- */
   function select(lang) {
-    current = lang; q.value = lang.name; clearBtn.hidden = false; closeList(); q.blur();
+    current = lang; q.value = nameOf(lang); clearBtn.hidden = false; closeList(); q.blur();
     fillPanel(lang); panel.classList.add("has"); drawHighlight(lang);
     hidePanel();
     if (lang.boxes.length) {
-      status.textContent = desktop.matches ? lang.name + " highlighted on the door." : lang.name + " highlighted. Drag the sheet up to read it.";
-    } else status.textContent = lang.name + " hasn't been located on the door yet.";
+      status.textContent = t(desktop.matches ? "onDoor" : "onSheet").replace("{n}", nameOf(lang));
+    } else status.textContent = t("missing").replace("{n}", nameOf(lang));
     jump.hidden = desktop.matches;
     if (EDIT) status.textContent += " [edit: drag on the door to redraw, shift-drag to add a box]";
     if (desktop.matches) {
@@ -357,7 +380,7 @@
     current = null; q.value = ""; clearBtn.hidden = true; hidePanel();
     panel.classList.remove("has", "peek", "full", "reveal");
     document.body.classList.remove("sheeted");
-    drawHighlight(null); jump.hidden = true; status.textContent = "Tap the door or search to find a language.";
+    drawHighlight(null); jump.hidden = true; status.textContent = t("start");
   }
 
   function onRingClick(e) {
@@ -422,5 +445,46 @@
     });
   }
 
-  renderList("");
+  /* ---------- applying the page language ---------- */
+  function applyLocale() {
+    document.documentElement.lang = locale;
+    document.title = t("title");
+    $("t-h1").textContent = t("h1");
+    $("t-sub").textContent = t("sub");
+    stage.querySelector("img").alt = t("alt");
+    q.placeholder = t("search");
+    clearBtn.setAttribute("aria-label", t("clear"));
+    closeBtn.setAttribute("aria-label", t("close"));
+    jump.textContent = t("jump");
+    langs.setAttribute("aria-label", t("langLabel"));
+    $("f-credit").textContent = t("credit");
+    $("f-gift").textContent = t("gift");
+    var site = $("f-site");
+    if (site) site.textContent = t("site");
+    Array.prototype.forEach.call(langs.children, function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-loc") === locale ? "true" : "false");
+    });
+    /* the list is alphabetical in whichever language it is showing, so it re-sorts on every switch */
+    LANGS.sort(function (a, b) { return nameOf(a).localeCompare(nameOf(b), locale); });
+    if (current) {
+      q.value = nameOf(current);
+      fillPanel(current);
+      status.textContent = current.boxes.length
+        ? t(desktop.matches ? "onDoor" : "onSheet").replace("{n}", nameOf(current))
+        : t("missing").replace("{n}", nameOf(current));
+    } else {
+      status.textContent = t("start");
+    }
+    renderList(list.hidden ? "" : q.value);
+  }
+
+  langs.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-loc]");
+    if (!b || b.getAttribute("data-loc") === locale) return;
+    locale = b.getAttribute("data-loc");
+    try { localStorage.setItem(STORE, locale); } catch (err) {}   // private mode: switch anyway
+    applyLocale();
+  });
+
+  applyLocale();
 })();

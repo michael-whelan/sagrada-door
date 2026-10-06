@@ -12,7 +12,7 @@
 </head>
 <body class="intro">
   <header class="top">
-    <h1>Our Father door <span>Sagrada Família · Glory façade</span></h1>
+    <h1><span id="t-h1">Our Father door</span> <span id="t-sub">Sagrada Família · Glory façade</span></h1>
     <div class="search">
       <input id="q" type="text" role="combobox" aria-expanded="false" aria-controls="list" aria-autocomplete="list"
              placeholder="Search a language…" autocomplete="off" spellcheck="false">
@@ -83,10 +83,24 @@
     </div>
   </main>
 
-  <footer>Lettering by Josep Maria Subirachs and Bruno Gallart. Highlight positions are placed by hand, and AI was used to identify the languages I couldn’t read — so expect mistakes.</footer>
+  <footer>
+    <nav id="langs" class="langs">
+      <button type="button" data-loc="en" lang="en">English</button>
+      <button type="button" data-loc="es" lang="es">Español</button>
+      <button type="button" data-loc="ca" lang="ca">Català</button>
+    </nav>
+    <p id="f-credit"></p>
+    <p class="made" id="f-gift"></p>
+    <p class="links">
+      <a href="https://github.com/michael-whelan/sagrada-door">GitHub</a>
+      <!-- personal site: drop the link in here and give it id="f-site" so its label gets translated
+           <a id="f-site" href="https://example.com"></a> -->
+    </p>
+  </footer>
 
   <div class="grain" aria-hidden="true"></div>
 
+  <script src="i18n.js"></script>
   <script src="data.js"></script>
   <script src="app.js"></script>
 </body>
