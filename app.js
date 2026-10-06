@@ -14,6 +14,7 @@
      name is the key the translations hang off, and the prayers are never translated at all.
      A stored choice wins; otherwise the browser decides, since most visitors here are local. */
   var LOCALES = ["en", "es", "ca"], STORE = "sagrada-page-lang";
+  var SITE = "https://michaelwhelan.dev";   // the href in index.html is the no-JS fallback
   var langs = $("langs");
   var locale = (function () {
     try {
@@ -458,9 +459,21 @@
     jump.textContent = t("jump");
     langs.setAttribute("aria-label", t("langLabel"));
     $("f-credit").textContent = t("credit");
-    $("f-gift").textContent = t("gift");
+    /* the dedication signs off with a link on the name, so it is built from nodes rather than
+       set as text - and {me} is a placeholder because the name lands in a different place in
+       each language */
+    var gift = $("f-gift"), parts = t("gift").split("{me}");
+    gift.textContent = "";
+    gift.appendChild(document.createTextNode(parts[0]));
+    if (parts.length > 1) {
+      var me = document.createElement("a");
+      me.href = SITE;
+      me.textContent = window.UI.me;
+      gift.appendChild(me);
+      gift.appendChild(document.createTextNode(parts[1]));
+    }
     var site = $("f-site");
-    if (site) site.textContent = t("site");
+    if (site) { site.href = SITE; site.textContent = t("site"); }
     Array.prototype.forEach.call(langs.children, function (b) {
       b.setAttribute("aria-pressed", b.getAttribute("data-loc") === locale ? "true" : "false");
     });

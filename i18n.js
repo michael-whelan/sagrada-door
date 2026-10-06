@@ -29,7 +29,7 @@ window.UI = {
     pending: "The full text for this language hasn't been added yet.",
     langLabel: "Page language",
     credit: "Lettering by Josep Maria Subirachs and Bruno Gallart. Highlight positions are placed by hand, and AI was used to identify the languages I couldn’t read — so expect mistakes.",
-    gift: "Developed as a gift to the people of BCN by Michael",
+    gift: "Developed as a gift to the people of BCN by {me}",
     site: "Website"
   },
 
@@ -52,7 +52,7 @@ window.UI = {
     pending: "El texto completo de este idioma aún no se ha añadido.",
     langLabel: "Idioma de la página",
     credit: "Rótulos de Josep Maria Subirachs y Bruno Gallart. Las posiciones de los resaltados están puestas a mano, y se usó IA para identificar los idiomas que yo no sabía leer: espera errores.",
-    gift: "Hecho como regalo para la gente de BCN, por Michael",
+    gift: "Hecho como regalo para la gente de BCN, por {me}",
     site: "Sitio web"
   },
 
@@ -75,10 +75,13 @@ window.UI = {
     pending: "El text complet d’aquest idioma encara no s’ha afegit.",
     langLabel: "Idioma de la pàgina",
     credit: "Lletres de Josep Maria Subirachs i Bruno Gallart. Les posicions dels realçats estan posades a mà, i es va fer servir IA per identificar els idiomes que jo no sabia llegir: espera errors.",
-    gift: "Fet com a regal per a la gent de BCN, per Michael",
+    gift: "Fet com a regal per a la gent de BCN, per {me}",
     site: "Lloc web"
   }
 };
+
+/* The one string that is the same in all three: {me} in `gift` becomes a link to the site. */
+window.UI.me = "Michael";
 
 /* The 50 entries of data.js, by id. Capitalised as list labels, not as running prose. */
 window.UI.es.names = {
