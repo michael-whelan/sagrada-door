@@ -40,7 +40,11 @@
     else q.removeAttribute("aria-activedescendant");
   }
 
-  function openList(filter) { renderList(filter); list.hidden = false; q.setAttribute("aria-expanded", "true"); }
+  /* suggestions only appear once something has been typed */
+  function openList(filter) {
+    if (!filter) { closeList(); return; }
+    renderList(filter); list.hidden = false; q.setAttribute("aria-expanded", "true");
+  }
   function closeList() { list.hidden = true; q.setAttribute("aria-expanded", "false"); }
 
   /* Starting a new search resets the cycle: overlay fades out, highlight stays until a new pick */
@@ -50,7 +54,7 @@
   q.addEventListener("click", function () { if (list.hidden) beginSearch(); });
   q.addEventListener("input", function () { hidePanel(); openList(q.value); clearBtn.hidden = !q.value; });
   q.addEventListener("keydown", function (e) {
-    if (e.key === "ArrowDown") { e.preventDefault(); if (list.hidden) openList(q.value); setActive(Math.min(active + 1, shown.length - 1)); }
+    if (e.key === "ArrowDown") { e.preventDefault(); if (list.hidden) openList(q.value); if (list.hidden) return; setActive(Math.min(active + 1, shown.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setActive(Math.max(active - 1, 0)); }
     else if (e.key === "Enter") { e.preventDefault(); var l = shown[active >= 0 ? active : 0]; if (l && !list.hidden) select(l); }
     else if (e.key === "Escape") { closeList(); hidePanel(); q.blur(); }
