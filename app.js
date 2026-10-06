@@ -3,7 +3,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var q = $("q"), list = $("list"), clearBtn = $("clear"), status = $("status"), jump = $("jump");
   var door = $("door"), stage = door.querySelector(".stage"), holes = $("holes"), rings = $("rings"), hl = $("hl");
-  var panel = $("panel"), closeBtn = $("close");
+  var panel = $("panel"), closeBtn = $("close"), head = $("head");
   var NS = "http://www.w3.org/2000/svg";
   var desktop = window.matchMedia("(min-width:900px) and (hover:hover)");
   var current = null, active = -1, shown = [], timer = null, EDIT = location.search.indexOf("edit") > -1;
@@ -86,8 +86,18 @@
   }
 
   /* ---------- text panel ---------- */
+  /* The prayers are stored as one block of prose; split on sentence ends so the
+     reveal has units to stagger and the text reads as verse rather than a slab. */
+  function lines(s) {
+    return (s.match(/[^.!?؟।。]+[.!?؟।。]*\s*/g) || [s])
+      .map(function (x) { return x.trim(); }).filter(Boolean);
+  }
+
   function fillPanel(lang) {
-    $("p-name").textContent = lang.name + (lang.native !== lang.name ? " · " + lang.native : "");
+    $("p-name").textContent = lang.name;
+    var nat = $("p-native");
+    nat.textContent = lang.native === lang.name ? "" : lang.native;
+    nat.setAttribute("lang", lang.id);
     var notes = [];
     if (!lang.boxes.length) notes.push("Not located on the photo yet.");
     if (lang.note) notes.push(lang.note);
@@ -96,7 +106,19 @@
     var t = $("p-text");
     t.className = "prayer" + (lang.dir === "rtl" ? " rtl" : "") + (lang.text ? "" : " pending");
     t.setAttribute("lang", lang.id);
-    t.textContent = lang.text || "The full text for this language hasn't been added yet.";
+    t.innerHTML = "";
+    lines(lang.text || "The full text for this language hasn't been added yet.").forEach(function (s, i) {
+      var ln = document.createElement("span");
+      ln.className = "ln"; ln.style.setProperty("--i", i); ln.textContent = s;
+      t.appendChild(ln);
+    });
+  }
+
+  /* restart the staggered fade at the moment the panel actually becomes visible */
+  function playReveal() {
+    panel.classList.remove("reveal");
+    void panel.offsetWidth;
+    panel.classList.add("reveal");
   }
 
   function hidePanel() { clearTimeout(timer); panel.classList.remove("show"); }
@@ -108,8 +130,48 @@
       panel.classList.toggle("at-top", top);
       panel.classList.toggle("at-bottom", !top);
       panel.classList.add("show");
+      playReveal();
     }
   }
+
+  /* ---------- mobile bottom sheet ---------- */
+  var sheet = "peek";
+
+  function setSheet(s) {
+    sheet = s;
+    panel.style.setProperty("--peek", "calc(100% - " + head.offsetHeight + "px)");
+    panel.classList.toggle("peek", s === "peek");
+    panel.classList.toggle("full", s === "full");
+  }
+
+  var startY = 0, baseY = 0, curY = 0, peekY = 0, dragging = false;
+
+  head.addEventListener("pointerdown", function (e) {
+    if (desktop.matches || e.target === closeBtn) return;
+    peekY = panel.offsetHeight - head.offsetHeight;
+    baseY = curY = sheet === "full" ? 0 : peekY;
+    startY = e.clientY; dragging = true;
+    panel.classList.add("drag");
+    head.setPointerCapture(e.pointerId);
+  });
+
+  head.addEventListener("pointermove", function (e) {
+    if (!dragging) return;
+    curY = Math.max(0, Math.min(peekY, baseY + (e.clientY - startY)));
+    panel.style.transform = "translateY(" + curY + "px)";
+  });
+
+  function endDrag() {
+    if (!dragging) return;
+    dragging = false;
+    panel.classList.remove("drag");
+    panel.style.transform = "";
+    // a tap (no real movement) toggles; a drag snaps to the nearer state
+    if (Math.abs(curY - baseY) < 5) setSheet(sheet === "full" ? "peek" : "full");
+    else setSheet(curY < peekY / 2 ? "full" : "peek");
+  }
+  head.addEventListener("pointerup", endDrag);
+  head.addEventListener("pointercancel", endDrag);
 
   /* ---------- selecting ---------- */
   function select(lang) {
@@ -117,22 +179,27 @@
     fillPanel(lang); panel.classList.add("has"); drawHighlight(lang);
     hidePanel();
     if (lang.boxes.length) {
-      status.textContent = desktop.matches ? lang.name + " highlighted on the door." : lang.name + " highlighted. Tap it to jump to the full text.";
+      status.textContent = desktop.matches ? lang.name + " highlighted on the door." : lang.name + " highlighted. Drag the sheet up to read it.";
     } else status.textContent = lang.name + " hasn't been located on the door yet.";
     jump.hidden = desktop.matches;
     if (EDIT) status.textContent += " [edit: drag on the door to redraw, shift-drag to add a box]";
     if (desktop.matches) {
       timer = setTimeout(showPanel, 900); // short delay, then fade in
+    } else {
+      document.body.classList.add("sheeted");
+      setSheet("peek"); playReveal();
     }
     // bring the highlight into view on small screens
     if (!desktop.matches && lang.boxes.length) {
       var r = stage.getBoundingClientRect(), y = r.top + window.scrollY + r.height * center(lang).y / 100;
-      window.scrollTo({ top: Math.max(0, y - window.innerHeight * 0.35), behavior: "smooth" });
+      window.scrollTo({ top: Math.max(0, y - window.innerHeight * 0.45), behavior: "smooth" });
     }
   }
 
   function reset() {
-    current = null; q.value = ""; clearBtn.hidden = true; hidePanel(); panel.classList.remove("has");
+    current = null; q.value = ""; clearBtn.hidden = true; hidePanel();
+    panel.classList.remove("has", "peek", "full", "reveal");
+    document.body.classList.remove("sheeted");
     drawHighlight(null); jump.hidden = true; status.textContent = "Tap the door or search to find a language.";
   }
 
@@ -140,11 +207,19 @@
     if (EDIT) return;
     e.stopPropagation();
     if (desktop.matches) { panel.classList.contains("show") ? hidePanel() : showPanel(); }
-    else panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    else setSheet("full");
   }
 
-  jump.addEventListener("click", function () { panel.scrollIntoView({ behavior: "smooth", block: "start" }); });
-  closeBtn.addEventListener("click", hidePanel);
+  jump.addEventListener("click", function () { setSheet("full"); });
+  /* on desktop the × dismisses the overlay; on mobile it drops the sheet back to a peek */
+  closeBtn.addEventListener("click", function () { desktop.matches ? hidePanel() : setSheet("peek"); });
+
+  /* ---------- intro: hold dark until the door is decoded, then fade it up ---------- */
+  var img = stage.querySelector("img");
+  function begin() { requestAnimationFrame(function () { document.body.classList.add("ready"); }); }
+  if (img.complete) begin();
+  else { img.addEventListener("load", begin); img.addEventListener("error", begin); }
+  setTimeout(begin, 4000); // never leave the page dark if the photo stalls
 
   /* clicking the door itself opens the search */
   stage.addEventListener("click", function () {
