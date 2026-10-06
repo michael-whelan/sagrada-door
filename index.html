@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Door of the Lord's Prayer · Sagrada Família</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Our Father door <span>Sagrada Família · Glory façade</span></h1>
+    <div class="search">
+      <input id="q" type="text" role="combobox" aria-expanded="false" aria-controls="list" aria-autocomplete="list"
+             placeholder="Search a language…" autocomplete="off" spellcheck="false">
+      <button id="clear" type="button" aria-label="Clear" hidden>×</button>
+      <ul id="list" role="listbox" hidden></ul>
+    </div>
+    <p id="status" class="status">Tap the door or search to find a language.</p>
+    <button id="jump" type="button" hidden>Read full text ↓</button>
+  </header>
+
+  <main>
+    <div id="door" class="door">
+      <div class="stage">
+      <img src="door.jpg" alt="Bronze door with the Lord's Prayer in Catalan and the daily-bread petition in 50 languages" draggable="false">
+      <svg id="hl" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <defs><mask id="cut"><rect width="100" height="100" fill="#fff"/><g id="holes"></g></mask></defs>
+        <rect id="dim" width="100" height="100" mask="url(#cut)"/>
+        <g id="rings"></g>
+      </svg>
+      </div>
+      <article id="panel" class="panel" aria-live="polite">
+        <button id="close" type="button" aria-label="Close">×</button>
+        <h2 id="p-name"></h2>
+        <p id="p-note" class="note"></p>
+        <p id="p-text" class="prayer"></p>
+      </article>
+    </div>
+  </main>
+
+  <footer>Lettering by Josep Maria Subirachs and Bruno Gallart. Highlight positions are hand-estimated; prayer texts marked “check” were written from memory.</footer>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
