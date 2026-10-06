@@ -27,9 +27,25 @@
       <div class="stage">
       <img src="door.jpg" alt="Bronze door with the Lord's Prayer in Catalan and the daily-bread petition in 50 languages" draggable="false">
       <svg id="hl" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <defs><mask id="cut"><rect width="100" height="100" fill="#fff"/><g id="holes"></g></mask></defs>
+        <defs><filter id="spot" filterUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><feGaussianBlur stdDeviation="0.9"/></filter>
+          <mask id="cut"><rect width="100" height="100" fill="#fff"/><g id="holes" filter="url(#spot)"></g></mask></defs>
         <rect id="dim" width="100" height="100" mask="url(#cut)"/>
         <g id="rings"></g>
+      </svg>
+      <svg id="lit" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <filter id="feather" filterUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><feGaussianBlur stdDeviation="0.22"/></filter>
+          <filter id="soft" filterUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><feGaussianBlur stdDeviation="0.9"/></filter>
+          <filter id="bloomBlur" filterUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><feGaussianBlur stdDeviation="0.35"/></filter>
+          <linearGradient id="sweepGrad" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#000"/><stop offset=".55" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>
+          <mask id="m-base" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><g id="g-base" filter="url(#feather)"></g></mask>
+          <mask id="m-bloom" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><g id="g-bloom" filter="url(#soft)"></g></mask>
+          <mask id="m-sweep" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><g id="g-sweep"></g></mask>
+          <g id="clips"></g>
+        </defs>
+        <image href="door-lit.jpg" width="100" height="100" preserveAspectRatio="none" filter="url(#bloomBlur)" mask="url(#m-bloom)" opacity=".85"/>
+        <image href="door-lit.jpg" width="100" height="100" preserveAspectRatio="none" mask="url(#m-base)" opacity=".72"/>
+        <image href="door-lit.jpg" width="100" height="100" preserveAspectRatio="none" mask="url(#m-sweep)"/>
       </svg>
       </div>
       <article id="panel" class="panel" aria-live="polite">

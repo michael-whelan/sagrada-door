@@ -4,6 +4,7 @@
   var q = $("q"), list = $("list"), clearBtn = $("clear"), status = $("status"), jump = $("jump");
   var door = $("door"), stage = door.querySelector(".stage"), holes = $("holes"), rings = $("rings"), hl = $("hl");
   var panel = $("panel"), closeBtn = $("close"), head = $("head");
+  var gBase = $("g-base"), gBloom = $("g-bloom"), gSweep = $("g-sweep"), clips = $("clips");
   var NS = "http://www.w3.org/2000/svg";
   var desktop = window.matchMedia("(min-width:900px) and (hover:hover)");
   var current = null, active = -1, shown = [], timer = null, EDIT = location.search.indexOf("edit") > -1;
@@ -60,7 +61,8 @@
     else if (e.key === "Escape") { closeList(); hidePanel(); q.blur(); }
   });
   q.addEventListener("blur", function () { setTimeout(closeList, 120); });
-  clearBtn.addEventListener("click", function () { reset(); q.focus(); });
+  function clearAll() { reset(); q.focus(); }
+  clearBtn.addEventListener("click", clearAll);
 
   /* ---------- highlight ---------- */
   function rect(b, pad) {
@@ -70,15 +72,35 @@
     return r;
   }
 
+  function el(name, attrs, parent) {
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  /* The lettering "lights up": a pre-computed amber edge map of the door (door-lit.jpg) is revealed
+     through soft masks over the chosen boxes, with a bloom underneath and a light sweep along the line. */
   function drawHighlight(lang) {
-    holes.innerHTML = ""; rings.innerHTML = "";
-    var boxes = lang && lang.boxes || [];
-    boxes.forEach(function (b) {
-      var h = rect(b, 0.5); h.setAttribute("fill", "#000"); holes.appendChild(h);
+    [holes, rings, gBase, gBloom, gSweep, clips].forEach(function (g) { g.innerHTML = ""; });
+    var boxes = lang && lang.boxes || [], anims = [];
+    boxes.forEach(function (b, i) {
+      var h = rect(b, 1.2); h.setAttribute("fill", "#000"); holes.appendChild(h);
       var r = rect(b, 0.5); r.addEventListener("click", onRingClick); rings.appendChild(r);
+      var m = rect(b, 0.3); m.setAttribute("fill", "#fff"); gBase.appendChild(m);
+      var bl = rect(b, 0.9); bl.setAttribute("fill", "#fff"); gBloom.appendChild(bl);
+      var cp = el("clipPath", { id: "clip" + i }, clips); cp.appendChild(rect(b, 0.3));
+      var g = el("g", { "clip-path": "url(#clip" + i + ")" }, gSweep);
+      var w = b[2] * 0.5;
+      var sw = el("rect", { x: b[0] - w, y: b[1] - 1, width: w, height: b[3] + 2, fill: "url(#sweepGrad)" }, g);
+      anims.push(el("animate", { attributeName: "x", from: b[0] - w, to: b[0] + b[2], dur: "1.1s", begin: "indefinite", fill: "freeze" }, sw));
     });
     hl.classList.toggle("on", boxes.length > 0);
     door.classList.toggle("on", boxes.length > 0);
+    // SMIL ignores prefers-reduced-motion, so gate the sweep here rather than in CSS
+    if (!window.matchMedia("(prefers-reduced-motion:reduce)").matches) {
+      anims.forEach(function (an) { try { an.beginElement(); } catch (e) {} });
+    }
   }
 
   function center(lang) {
@@ -211,8 +233,12 @@
   }
 
   jump.addEventListener("click", function () { setSheet("full"); });
-  /* on desktop the × dismisses the overlay; on mobile it drops the sheet back to a peek */
-  closeBtn.addEventListener("click", function () { desktop.matches ? hidePanel() : setSheet("peek"); });
+  /* The × is the same action as the × in the search bar, except that on mobile an open
+     sheet gets one step first: full -> peek, then peek -> clear. */
+  closeBtn.addEventListener("click", function () {
+    if (!desktop.matches && sheet === "full") setSheet("peek");
+    else clearAll();
+  });
 
   /* ---------- intro: hold dark until the door is decoded, then fade it up ---------- */
   var img = stage.querySelector("img");
