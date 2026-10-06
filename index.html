@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="intro">
@@ -32,20 +33,41 @@
         <rect id="dim" width="100" height="100" mask="url(#cut)"/>
         <g id="rings"></g>
       </svg>
+      <!-- The "lit" layer is the door photo itself, sharpened and lifted, revealed through soft
+           masks over the selected boxes - so the carved letters keep their real shading. -->
       <svg id="lit" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
         <defs>
+          <!-- unsharp mask, then a per-channel lift: more contrast, slightly warmer than the bronze -->
+          <filter id="boost" filterUnits="userSpaceOnUse" x="0" y="0" width="100" height="100" color-interpolation-filters="sRGB">
+            <feGaussianBlur stdDeviation="0.14" result="blur"/>
+            <feComposite in="SourceGraphic" in2="blur" operator="arithmetic" k2="1.95" k3="-0.95"/>
+            <feComponentTransfer>
+              <feFuncR type="linear" slope="2.0" intercept="-0.26"/>
+              <feFuncG type="linear" slope="1.86" intercept="-0.27"/>
+              <feFuncB type="linear" slope="1.56" intercept="-0.28"/>
+            </feComponentTransfer>
+          </filter>
           <filter id="feather" filterUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><feGaussianBlur stdDeviation="0.22"/></filter>
+          <filter id="halo" filterUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><feGaussianBlur stdDeviation="0.13"/></filter>
           <filter id="soft" filterUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><feGaussianBlur stdDeviation="0.9"/></filter>
-          <filter id="bloomBlur" filterUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><feGaussianBlur stdDeviation="0.35"/></filter>
           <linearGradient id="sweepGrad" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#000"/><stop offset=".55" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>
-          <mask id="m-base" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><g id="g-base" filter="url(#feather)"></g></mask>
+          <mask id="m-base" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+            <g id="g-base" filter="url(#feather)"></g>   <!-- soft boxes: the fallback -->
+            <g id="g-strokes"></g>                       <!-- measured letter strokes, left sharp -->
+          </mask>
           <mask id="m-bloom" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><g id="g-bloom" filter="url(#soft)"></g></mask>
           <mask id="m-sweep" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><g id="g-sweep"></g></mask>
           <g id="clips"></g>
         </defs>
-        <image href="door-lit.jpg" width="100" height="100" preserveAspectRatio="none" filter="url(#bloomBlur)" mask="url(#m-bloom)" opacity="1"/>
-        <image href="door-lit.jpg" width="100" height="100" preserveAspectRatio="none" mask="url(#m-base)" opacity="1"/>
-        <image href="door-lit.jpg" width="100" height="100" preserveAspectRatio="none" mask="url(#m-sweep)"/>
+        <rect class="spill" width="100" height="100" fill="#ffc278" mask="url(#m-bloom)"/>
+        <!-- halo: the stroke mask itself, blurred. The filter sits on the PARENT so it blurs the
+             already-masked result - masking a filtered element would just crop the blur away. -->
+        <g class="halo" filter="url(#halo)"><g mask="url(#m-base)"><rect width="100" height="100" fill="#ffd9a0"/></g></g>
+        <g mask="url(#m-base)">
+          <image href="door.jpg" width="100" height="100" preserveAspectRatio="none" filter="url(#boost)"/>
+          <rect class="ink" width="100" height="100" fill="#ffcf8a"/>
+          <image class="sweep" href="door.jpg" width="100" height="100" preserveAspectRatio="none" filter="url(#boost)" mask="url(#m-sweep)"/>
+        </g>
       </svg>
       </div>
       <article id="panel" class="panel" aria-live="polite">
@@ -61,7 +83,7 @@
     </div>
   </main>
 
-  <footer>Lettering by Josep Maria Subirachs and Bruno Gallart. Highlight positions are hand-estimated; prayer texts marked “check” were written from memory.</footer>
+  <footer>Lettering by Josep Maria Subirachs and Bruno Gallart. Highlight positions are placed by hand, and AI was used to identify the languages I couldn’t read — so expect mistakes.</footer>
 
   <div class="grain" aria-hidden="true"></div>
 

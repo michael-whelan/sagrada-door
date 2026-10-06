@@ -2,9 +2,9 @@
   var LANGS = window.LANGS.slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
   var $ = function (id) { return document.getElementById(id); };
   var q = $("q"), list = $("list"), clearBtn = $("clear"), status = $("status"), jump = $("jump");
-  var door = $("door"), stage = door.querySelector(".stage"), holes = $("holes"), rings = $("rings"), hl = $("hl");
+  var door = $("door"), stage = door.querySelector(".stage"), holes = $("holes"), rings = $("rings"), hl = $("hl"), lit = $("lit");
   var panel = $("panel"), closeBtn = $("close"), head = $("head");
-  var gBase = $("g-base"), gBloom = $("g-bloom"), gSweep = $("g-sweep"), clips = $("clips");
+  var gBase = $("g-base"), gStrokes = $("g-strokes"), gBloom = $("g-bloom"), gSweep = $("g-sweep"), clips = $("clips");
   var NS = "http://www.w3.org/2000/svg";
   var desktop = window.matchMedia("(min-width:900px) and (hover:hover)");
   var current = null, active = -1, shown = [], timer = null, EDIT = location.search.indexOf("edit") > -1;
@@ -79,25 +79,150 @@
     return e;
   }
 
-  /* The lettering "lights up": a pre-computed amber edge map of the door (door-lit.jpg) is revealed
-     through soft masks over the chosen boxes, with a bloom underneath and a light sweep along the line.
+  /* ---------- measuring the letter strokes off the photo ----------
+     The glow should follow the carving, not the box. The prayer texts in data.js can't give us
+     that: Subirachs' lettering is hand-cut, so any font we rendered across a box would land a few
+     pixels off the real glyphs and read as doubled letters. So the mask is measured instead.
 
-     HOLE_FILL is how much of the #dim layer is lifted over the selected line (mask luminance:
-     #000 removes the dim entirely, #fff leaves it fully on). It has to stay dark-ish: #lit blends
-     with `screen`, which can only brighten, so an undimmed backdrop washes the amber out completely.
-     Turn it DOWN toward #000 for more of a plain spotlight, UP toward #fff for more amber glow. */
-  var HOLE_FILL = "#c0c0c0";
+     Instead, inside each box we measure how far every pixel sits from its own local background
+     (box-blur means from integral images, window ~ one letter height), then judge that against how
+     busy the patch already is. What survives is the carving - the lit faces and shadow lines of
+     each stroke - and not the flat stone between letters. The result goes into #m-base as an
+     image, which is why that mask keeps a separate unfiltered group: the soft #feather that suits
+     a box would wipe strokes this thin out entirely.
+
+     getImageData is blocked when the page is opened over file://, so every failure path here
+     returns null and drawHighlight falls back to the soft box. */
+  var PAD = 0.3;                 // same padding the fallback rect uses, in % of the photo
+  var srcCanvas, maskCache = {};
+
+  function source() {
+    if (srcCanvas !== undefined) return srcCanvas;
+    var im = stage.querySelector("img");
+    if (!im.naturalWidth) return null;   // not decoded yet - stay uncached so the next select() retries
+    srcCanvas = null;
+    try {
+      var c = document.createElement("canvas");
+      c.width = im.naturalWidth; c.height = im.naturalHeight;
+      var cx = c.getContext("2d");
+      cx.drawImage(im, 0, 0);
+      cx.getImageData(0, 0, 1, 1);       // throws on a tainted canvas (file:// origin)
+      srcCanvas = c;
+    } catch (e) { srcCanvas = null; }
+    return srcCanvas;
+  }
+
+  /* summed-area table, so a local mean over any window costs four lookups */
+  function integral(a, w, h) {
+    var W = w + 1, s = new Float64Array(W * (h + 1));
+    for (var y = 0; y < h; y++) {
+      for (var x = 0, run = 0; x < w; x++) {
+        run += a[y * w + x];
+        s[(y + 1) * W + x + 1] = s[y * W + x + 1] + run;
+      }
+    }
+    return s;
+  }
+  function area(s, W, x0, y0, x1, y1) {
+    return s[y1 * W + x1] - s[y0 * W + x1] - s[y1 * W + x0] + s[y0 * W + x0];
+  }
+
+  /* 3-tap blur, separably: softens the mask edge without eating a stroke */
+  function smooth(a, w, h) {
+    var out = new Float32Array(w * h), x, y, i;
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+      i = y * w + x;
+      out[i] = (a[i - (x > 0 ? 1 : 0)] + 2 * a[i] + a[i + (x < w - 1 ? 1 : 0)]) / 4;
+    }
+    for (x = 0; x < w; x++) for (y = 0; y < h; y++) {
+      i = y * w + x;
+      a[i] = (out[i - (y > 0 ? w : 0)] + 2 * out[i] + out[i + (y < h - 1 ? w : 0)]) / 4;
+    }
+  }
+
+  function strokeMask(b) {
+    var key = b.join(",");
+    if (key in maskCache) return maskCache[key];
+    var src = source();
+    if (!src) return null;
+    var SW = src.width, SH = src.height;
+    var x0 = Math.max(0, Math.round((b[0] - PAD) / 100 * SW));
+    var y0 = Math.max(0, Math.round((b[1] - PAD * 0.6) / 100 * SH));
+    var x1 = Math.min(SW, Math.round((b[0] + b[2] + PAD) / 100 * SW));
+    var y1 = Math.min(SH, Math.round((b[1] + b[3] + PAD * 0.6) / 100 * SH));
+    var w = x1 - x0, h = y1 - y0, n = w * h;
+    if (w < 8 || h < 8) return (maskCache[key] = null);
+
+    var d = src.getContext("2d").getImageData(x0, y0, w, h).data;
+    var g = new Float32Array(n), i;
+    for (i = 0; i < n; i++) g[i] = (d[i * 4] * 0.299 + d[i * 4 + 1] * 0.587 + d[i * 4 + 2] * 0.114) / 255;
+
+    var W1 = w + 1, r = Math.max(3, Math.round(h * 0.8));   // window of roughly one letter height
+    var x, y, ax0, ay0, ax1, ay1, cnt;
+    /* how far each pixel sits from its own local background: the lit faces and the shadow
+       lines of a stroke both deviate, the flat stone between letters does not */
+    var si = integral(g, w, h), dev = new Float32Array(n);
+    for (y = 0; y < h; y++) {
+      ay0 = Math.max(0, y - r); ay1 = Math.min(h, y + r + 1);
+      for (x = 0; x < w; x++) {
+        ax0 = Math.max(0, x - r); ax1 = Math.min(w, x + r + 1);
+        cnt = (ax1 - ax0) * (ay1 - ay0);
+        dev[y * w + x] = Math.abs(g[y * w + x] - area(si, W1, ax0, ay0, ax1, ay1) / cnt);
+      }
+    }
+    /* ...measured against how busy that patch already is, so a line in deep shadow is judged
+       on its own terms rather than against the brightly lit part of the door */
+    var sa = integral(dev, w, h), m = new Float32Array(n), z;
+    for (y = 0; y < h; y++) {
+      ay0 = Math.max(0, y - r); ay1 = Math.min(h, y + r + 1);
+      for (x = 0; x < w; x++) {
+        ax0 = Math.max(0, x - r); ax1 = Math.min(w, x + r + 1);
+        cnt = (ax1 - ax0) * (ay1 - ay0);
+        i = y * w + x;
+        z = dev[i] / (area(sa, W1, ax0, ay0, ax1, ay1) / cnt + 0.004);
+        /* the z term finds the strokes; the absolute term vetoes flat stone, where a tiny
+           deviation would otherwise normalise up into a false stroke */
+        m[i] = Math.min(1, Math.max(0, (z - 1.4) / 1.0)) *
+               Math.min(1, Math.max(0, (dev[i] - 0.065) / 0.075));
+      }
+    }
+    smooth(m, w, h);
+
+    var c = document.createElement("canvas"); c.width = w; c.height = h;
+    var cx = c.getContext("2d"), out = cx.createImageData(w, h), v;
+    for (i = 0; i < n; i++) {
+      v = Math.round(Math.min(1, m[i] * 1.3) * 255);
+      out.data[i * 4] = out.data[i * 4 + 1] = out.data[i * 4 + 2] = v;
+      out.data[i * 4 + 3] = 255;
+    }
+    cx.putImageData(out, 0, 0);
+    return (maskCache[key] = {
+      href: c.toDataURL(), x: x0 / SW * 100, y: y0 / SH * 100, w: w / SW * 100, h: h / SH * 100
+    });
+  }
+
+  /* The lettering "lights up": the door photo itself, sharpened and lifted (filter #boost), is
+     revealed through soft masks over the chosen boxes, with a warm spill around it and a light
+     sweep along the line. Real letterforms, so the carving still reads.
+
+     HOLE_FILL is how much of the #dim layer is lifted in the soft pool around the selected line
+     (mask luminance: #000 removes the dim entirely, #fff leaves it fully on). Keep it dark but
+     not black - a little residual dim in the pool is what makes the lit line itself stand out.
+     Turn it DOWN toward #000 for a wider bright pool, UP toward #fff for a tighter one. */
+  var HOLE_FILL = "#9c9c9c";
 
   function drawHighlight(lang) {
-    [holes, rings, gBase, gBloom, gSweep, clips].forEach(function (g) { g.innerHTML = ""; });
-    var boxes = lang && lang.boxes || [], anims = [];
+    [holes, rings, gBase, gStrokes, gBloom, gSweep, clips].forEach(function (g) { g.innerHTML = ""; });
+    var boxes = lang && lang.boxes || [], anims = [], boxed = false;
     /* SMIL ignores prefers-reduced-motion, and a sweep rect that never animates would sit parked
        at its start position as a permanent bright blob - so skip building it altogether. */
     var reduced = window.matchMedia("(prefers-reduced-motion:reduce)").matches;
     boxes.forEach(function (b, i) {
       var h = rect(b, 1.2); h.setAttribute("fill", HOLE_FILL); holes.appendChild(h);
       var r = rect(b, 0.5); r.addEventListener("click", onRingClick); rings.appendChild(r);
-      var m = rect(b, 0.3); m.setAttribute("fill", "#fff"); gBase.appendChild(m);
+      var sm = strokeMask(b);
+      if (sm) el("image", { href: sm.href, x: sm.x, y: sm.y, width: sm.w, height: sm.h, preserveAspectRatio: "none" }, gStrokes);
+      else { var m = rect(b, PAD); m.setAttribute("fill", "#fff"); gBase.appendChild(m); boxed = true; }
       var bl = rect(b, 0.9); bl.setAttribute("fill", "#fff"); gBloom.appendChild(bl);
       if (reduced) return;
       var cp = el("clipPath", { id: "clip" + i }, clips); cp.appendChild(rect(b, 0.3));
@@ -106,6 +231,8 @@
       var sw = el("rect", { x: b[0] - w, y: b[1] - 1, width: w, height: b[3] + 2, fill: "url(#sweepGrad)" }, g);
       anims.push(el("animate", { attributeName: "x", from: b[0] - w, to: b[0] + b[2], dur: "1.1s", begin: "indefinite", fill: "freeze" }, sw));
     });
+    /* glow tuned for thin strokes would blow out a whole box, so the fallback gets its own level */
+    lit.classList.toggle("boxed", boxed);
     hl.classList.toggle("on", boxes.length > 0);
     door.classList.toggle("on", boxes.length > 0);
     anims.forEach(function (an) { try { an.beginElement(); } catch (e) {} });

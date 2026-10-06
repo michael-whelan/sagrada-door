@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- The page in miniature: the dark door with one line of its lettering lit. -->
+  <defs>
+    <filter id="g" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.6"/>
+    </filter>
+  </defs>
+  <rect width="32" height="32" rx="6" fill="#0a0806"/>
+  <path d="M5 30V13a11 11 0 0 1 22 0v17z" fill="#6b5330"/>
+  <path d="M16 13v17" stroke="#0a0806" stroke-width="1.2"/>
+  <rect x="6" y="16.2" width="20" height="3.8" fill="#d9933a" filter="url(#g)"/>
+  <rect x="6" y="17" width="20" height="2.6" fill="#ffd9a0"/>
+</svg>
