@@ -83,6 +83,8 @@ footer a:hover{color:var(--ink);border-bottom-color:var(--gold)}
 /* the dedication is the one warm line down here, so it gets the serif and the full ink colour */
 .made{margin:1.5em 0 .5em;font-family:var(--serif);font-size:1.05rem;color:var(--ink);letter-spacing:.01em}
 .links a+a{margin-left:18px}
+.made a{color:inherit;border-bottom-color:var(--bronze)}   /* the name, still part of the sentence */
+.made a:hover{color:var(--gold);border-bottom-color:var(--gold)}
 /* page language: three plain words, the current one lit like the door's highlight */
 .langs{display:flex;justify-content:center;gap:14px;margin:0 0 12px;padding-top:14px;border-top:1px solid var(--line)}
 .langs button{padding:0 0 2px;border:0;border-bottom:1px solid transparent;background:none;
