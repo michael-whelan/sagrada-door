@@ -80,15 +80,26 @@
   }
 
   /* The lettering "lights up": a pre-computed amber edge map of the door (door-lit.jpg) is revealed
-     through soft masks over the chosen boxes, with a bloom underneath and a light sweep along the line. */
+     through soft masks over the chosen boxes, with a bloom underneath and a light sweep along the line.
+
+     HOLE_FILL is how much of the #dim layer is lifted over the selected line (mask luminance:
+     #000 removes the dim entirely, #fff leaves it fully on). It has to stay dark-ish: #lit blends
+     with `screen`, which can only brighten, so an undimmed backdrop washes the amber out completely.
+     Turn it DOWN toward #000 for more of a plain spotlight, UP toward #fff for more amber glow. */
+  var HOLE_FILL = "#c0c0c0";
+
   function drawHighlight(lang) {
     [holes, rings, gBase, gBloom, gSweep, clips].forEach(function (g) { g.innerHTML = ""; });
     var boxes = lang && lang.boxes || [], anims = [];
+    /* SMIL ignores prefers-reduced-motion, and a sweep rect that never animates would sit parked
+       at its start position as a permanent bright blob - so skip building it altogether. */
+    var reduced = window.matchMedia("(prefers-reduced-motion:reduce)").matches;
     boxes.forEach(function (b, i) {
-      var h = rect(b, 1.2); h.setAttribute("fill", "#000"); holes.appendChild(h);
+      var h = rect(b, 1.2); h.setAttribute("fill", HOLE_FILL); holes.appendChild(h);
       var r = rect(b, 0.5); r.addEventListener("click", onRingClick); rings.appendChild(r);
       var m = rect(b, 0.3); m.setAttribute("fill", "#fff"); gBase.appendChild(m);
       var bl = rect(b, 0.9); bl.setAttribute("fill", "#fff"); gBloom.appendChild(bl);
+      if (reduced) return;
       var cp = el("clipPath", { id: "clip" + i }, clips); cp.appendChild(rect(b, 0.3));
       var g = el("g", { "clip-path": "url(#clip" + i + ")" }, gSweep);
       var w = b[2] * 0.5;
@@ -97,10 +108,7 @@
     });
     hl.classList.toggle("on", boxes.length > 0);
     door.classList.toggle("on", boxes.length > 0);
-    // SMIL ignores prefers-reduced-motion, so gate the sweep here rather than in CSS
-    if (!window.matchMedia("(prefers-reduced-motion:reduce)").matches) {
-      anims.forEach(function (an) { try { an.beginElement(); } catch (e) {} });
-    }
+    anims.forEach(function (an) { try { an.beginElement(); } catch (e) {} });
   }
 
   function center(lang) {
